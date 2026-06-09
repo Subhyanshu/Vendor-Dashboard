@@ -75,7 +75,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif}
 
 /* ── Section headers ── */
 .section-hd{
-  font-size:.95rem;font-weight:600;color:#e2e8f0;
+  font-size:.95rem;font-weight:700;color:#0f172a;
   padding:.6rem 0 .4rem;border-bottom:1px solid #1e2533;margin-bottom:1rem;
   display:flex;align-items:center;gap:.5rem}
 .section-hd .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
@@ -96,16 +96,29 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif}
 .nw-title{font-size:.8rem;font-weight:600;color:#93c5fd;
   text-transform:uppercase;letter-spacing:.1em;margin-bottom:.8rem;
   display:flex;align-items:center;gap:.5rem}
-.nw-row{display:flex;justify-content:space-between;align-items:center;
-  padding:.55rem .75rem;border-radius:8px;margin-bottom:.3rem;
-  background:#131c2e;border:1px solid #1e2d47;font-size:.83rem}
-.nw-row:hover{background:#172035;border-color:#2563eb}
-.nw-supplier{color:#e2e8f0;font-weight:500;flex:2;
+/* supplier summary row */
+.nw-sup-row{display:flex;justify-content:space-between;align-items:center;
+  padding:.65rem .85rem;border-radius:9px;margin-bottom:.35rem;
+  background:#0f1929;border:1px solid #1e3355;cursor:pointer;
+  transition:background .15s,border-color .15s}
+.nw-sup-row:hover{background:#172035;border-color:#3b82f6}
+.nw-sup-name{color:#e2e8f0;font-weight:600;font-size:.85rem;flex:3;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.nw-invoice{color:#64748b;font-size:.75rem;flex:1;text-align:center}
-.nw-date{color:#94a3b8;font-size:.75rem;flex:1;text-align:center}
-.nw-amount{color:#93c5fd;font-weight:600;font-family:'JetBrains Mono',monospace;
-  font-size:.82rem;flex:1;text-align:right}
+.nw-sup-count{color:#64748b;font-size:.75rem;flex:1;text-align:center}
+.nw-sup-earliest{color:#94a3b8;font-size:.75rem;flex:1;text-align:center}
+.nw-sup-total{color:#93c5fd;font-weight:700;font-size:.88rem;
+  font-family:'JetBrains Mono',monospace;flex:1;text-align:right}
+.nw-sup-caret{color:#3b82f6;font-size:.8rem;margin-left:.6rem;flex-shrink:0}
+/* invoice detail rows (shown after clicking a supplier) */
+.nw-row{display:flex;justify-content:space-between;align-items:center;
+  padding:.45rem .75rem;border-radius:7px;margin-bottom:.25rem;
+  background:#131c2e;border:1px solid #1e2d47;font-size:.8rem}
+.nw-supplier{color:#94a3b8;font-weight:500;flex:2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nw-invoice{color:#64748b;font-size:.73rem;flex:1;text-align:center}
+.nw-date{color:#94a3b8;font-size:.73rem;flex:1;text-align:center}
+.nw-amount{color:#60a5fa;font-weight:600;font-family:'JetBrains Mono',monospace;
+  font-size:.8rem;flex:1;text-align:right}
 
 /* ── Supplier lookup ── */
 .lookup-card{
@@ -555,73 +568,158 @@ st.markdown("<br>", unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ★ NEW: DUE NEXT WEEK PANEL
+# DUE NEXT WEEK PANEL  —  supplier summary + drill-down per supplier
 # ─────────────────────────────────────────────────────────────────────────────
 nw_df = dff[dff["category"] == "Due Next Week"].sort_values("open_amount", ascending=False)
 
 if not nw_df.empty:
     section_hd("Payments due next week", "#3b82f6")
 
-    # Summary strip
-    nw_total    = nw_df["open_amount"].sum()
+    # ── Summary KPI strip ────────────────────────────────────────────────────
+    nw_total     = nw_df["open_amount"].sum()
     nw_suppliers = nw_df["supplier"].nunique()
     s1, s2, s3, s4 = st.columns(4)
     with s1:
-        st.markdown(kpi_html("Total due next week", fmt(nw_total), "", "blue"), unsafe_allow_html=True)
+        st.markdown(kpi_html("Total due next week", fmt(nw_total), "", "blue"),
+                    unsafe_allow_html=True)
     with s2:
-        st.markdown(kpi_html("Invoice lines", str(len(nw_df)), "", "blue"), unsafe_allow_html=True)
+        st.markdown(kpi_html("Invoice lines", str(len(nw_df)), "", "blue"),
+                    unsafe_allow_html=True)
     with s3:
-        st.markdown(kpi_html("Suppliers involved", str(nw_suppliers), "", "blue"), unsafe_allow_html=True)
+        st.markdown(kpi_html("Suppliers involved", str(nw_suppliers), "", "blue"),
+                    unsafe_allow_html=True)
     with s4:
-        avg_nw = nw_df["open_amount"].mean()
-        st.markdown(kpi_html("Average invoice", fmt(avg_nw), "", "blue"), unsafe_allow_html=True)
+        st.markdown(kpi_html("Average invoice", fmt(nw_df["open_amount"].mean()), "", "blue"),
+                    unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Row-by-row styled list (up to 25 rows, rest available via table)
-    rows_html = ""
-    for _, row in nw_df.head(25).iterrows():
-        due_str  = row["due_date"].strftime("%d %b %Y") if pd.notna(row.get("due_date")) else "—"
-        inv_str  = str(row.get("invoice","—"))[:20]
-        rows_html += (
-            f'<div class="nw-row">'
-            f'<span class="nw-supplier" title="{row["supplier"]}">{row["supplier"]}</span>'
-            f'<span class="nw-invoice">{inv_str}</span>'
-            f'<span class="nw-date">Due {due_str}</span>'
-            f'<span class="nw-amount">{fmt(row["open_amount"])}</span>'
-            f'</div>'
-        )
-    if len(nw_df) > 25:
-        rows_html += (
-            f'<div style="text-align:center;padding:.5rem;font-size:.75rem;color:#64748b">'
-            f'+ {len(nw_df)-25} more rows — use Export below</div>'
-        )
+    # ── Session state: track which supplier is expanded ──────────────────────
+    if "nw_expanded_supplier" not in st.session_state:
+        st.session_state.nw_expanded_supplier = None
 
+    # ── Build per-supplier summary ───────────────────────────────────────────
+    nw_by_sup = (
+        nw_df.groupby("supplier")
+        .agg(
+            total_amount=("open_amount", "sum"),
+            invoice_count=("invoice",    "count"),
+            earliest_due=("due_date",    "min"),
+        )
+        .sort_values("total_amount", ascending=False)
+        .reset_index()
+    )
+
+    # Column header row
     st.markdown(
-        f'<div class="nw-panel">'
-        f'<div class="nw-title">📅 &nbsp;Next week invoice list '
-        f'<span style="color:#475569;font-weight:400;font-size:.72rem">'
-        f'({len(nw_df)} invoices)</span></div>'
-        f'<div style="display:flex;justify-content:space-between;'
-        f'padding:.3rem .75rem .5rem;font-size:.65rem;color:#475569;'
-        f'text-transform:uppercase;letter-spacing:.08em">'
-        f'<span style="flex:2">Supplier</span>'
-        f'<span style="flex:1;text-align:center">Invoice #</span>'
-        f'<span style="flex:1;text-align:center">Due date</span>'
-        f'<span style="flex:1;text-align:right">Amount</span></div>'
-        + rows_html +
-        f'</div>',
+        '<div class="nw-panel">'
+        '<div class="nw-title">📅 &nbsp;Supplier payment summary '
+        '<span style="color:#475569;font-weight:400;font-size:.72rem">'
+        '— click a supplier to see invoice breakdown</span></div>'
+        '<div style="display:flex;padding:.25rem .85rem .4rem;'
+        'font-size:.63rem;color:#334155;text-transform:uppercase;letter-spacing:.08em">'
+        '<span style="flex:3">Supplier</span>'
+        '<span style="flex:1;text-align:center">Invoices</span>'
+        '<span style="flex:1;text-align:center">Earliest due</span>'
+        '<span style="flex:1;text-align:right">Total amount</span>'
+        '<span style="width:1.4rem"></span>'
+        '</div>',
         unsafe_allow_html=True,
     )
 
-    nw_dl1, nw_dl2, _ = st.columns([1,1,5])
+    for _, sup_row in nw_by_sup.iterrows():
+        sup_name     = sup_row["supplier"]
+        sup_total    = sup_row["total_amount"]
+        sup_inv_cnt  = int(sup_row["invoice_count"])
+        sup_earliest = sup_row["earliest_due"]
+        earliest_str = (sup_earliest.strftime("%d %b %Y")
+                        if pd.notna(sup_earliest) else "—")
+        is_expanded  = (st.session_state.nw_expanded_supplier == sup_name)
+        caret        = "▲" if is_expanded else "▼"
+
+        # Supplier summary row — rendered as a button via st.button
+        # HTML is used for the styled row; the button sits on top as a transparent trigger
+        row_html = (
+            f'<div class="nw-sup-row">'
+            f'<span class="nw-sup-name" title="{sup_name}">{sup_name}</span>'
+            f'<span class="nw-sup-count">{sup_inv_cnt} inv</span>'
+            f'<span class="nw-sup-earliest">{earliest_str}</span>'
+            f'<span class="nw-sup-total">{fmt(sup_total)}</span>'
+            f'<span class="nw-sup-caret">{caret}</span>'
+            f'</div>'
+        )
+        st.markdown(row_html, unsafe_allow_html=True)
+
+        # Invisible button underneath — same row height, triggers expand/collapse
+        btn_key = f"nw_sup_{sup_name}"
+        if st.button(
+            f"{'▲ collapse' if is_expanded else '▼ expand'} {sup_name}",
+            key=btn_key,
+            help=f"Click to {'collapse' if is_expanded else 'see invoices for'} {sup_name}",
+            use_container_width=True,
+        ):
+            st.session_state.nw_expanded_supplier = (
+                None if is_expanded else sup_name
+            )
+            st.rerun()
+
+        # Invoice detail block — shown only when this supplier is expanded
+        if is_expanded:
+            sup_invoices = (
+                nw_df[nw_df["supplier"] == sup_name]
+                .sort_values("open_amount", ascending=False)
+            )
+            # Column headers for invoice rows
+            inv_header = (
+                '<div style="display:flex;padding:.2rem .75rem .35rem 2rem;'
+                'font-size:.62rem;color:#334155;text-transform:uppercase;letter-spacing:.08em">'
+                '<span style="flex:2">Invoice #</span>'
+                '<span style="flex:1;text-align:center">Invoice date</span>'
+                '<span style="flex:1;text-align:center">Due date</span>'
+                '<span style="flex:1;text-align:right">Amount</span>'
+                '</div>'
+            )
+            inv_rows = ""
+            for _, inv in sup_invoices.iterrows():
+                inv_date_str = (inv["inv_date"].strftime("%d %b %Y")
+                                if "inv_date" in inv and pd.notna(inv.get("inv_date"))
+                                else "—")
+                due_date_str = (inv["due_date"].strftime("%d %b %Y")
+                                if pd.notna(inv.get("due_date")) else "—")
+                inv_num = str(inv.get("invoice", "—"))[:24]
+                inv_rows += (
+                    f'<div class="nw-row" style="margin-left:1.5rem">'
+                    f'<span class="nw-supplier" title="{inv.get("invoice","—")}">{inv_num}</span>'
+                    f'<span class="nw-invoice">{inv_date_str}</span>'
+                    f'<span class="nw-date">{due_date_str}</span>'
+                    f'<span class="nw-amount">{fmt(inv["open_amount"])}</span>'
+                    f'</div>'
+                )
+            st.markdown(
+                f'<div style="background:#080f1c;border:1px solid #1e3355;'
+                f'border-radius:10px;padding:.6rem .5rem .6rem;margin:.1rem 0 .5rem">'
+                + inv_header + inv_rows +
+                f'<div style="display:flex;justify-content:flex-end;padding:.4rem .75rem 0;'
+                f'font-size:.72rem;color:#3b82f6;font-weight:600">'
+                f'Subtotal: {fmt(sup_invoices["open_amount"].sum())}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+    st.markdown("</div>", unsafe_allow_html=True)  # close .nw-panel
+
+    nw_dl1, nw_dl2, _ = st.columns([1, 1, 5])
     with nw_dl1:
-        st.download_button("⬇ Export CSV", nw_df.to_csv(index=False).encode(),
-            f"due_next_week_{datetime.now():%Y%m%d}.csv", "text/csv")
+        st.download_button(
+            "⬇ Export CSV", nw_df.to_csv(index=False).encode(),
+            f"due_next_week_{datetime.now():%Y%m%d}.csv", "text/csv",
+        )
     with nw_dl2:
-        st.download_button("⬇ Export Excel", to_excel_bytes(nw_df),
+        st.download_button(
+            "⬇ Export Excel", to_excel_bytes(nw_df),
             f"due_next_week_{datetime.now():%Y%m%d}.xlsx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
