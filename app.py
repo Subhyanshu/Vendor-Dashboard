@@ -220,7 +220,10 @@ def hbar_chart(labels, values, color="#8b5cf6"):
         hovertemplate="<b>%{y}</b><br>AED %{x:,.0f}<extra></extra>",
     ))
     fig.update_layout(
-        **PLOTLY_BASE, height=h, showlegend=False,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="DM Sans,sans-serif", color="#9ca3af", size=12),
+        height=h, showlegend=False,
         xaxis=dict(showgrid=True, gridcolor="#2a2d3a", zeroline=False,
                    tickformat=",.0f", tickfont=dict(color="#9ca3af")),
         yaxis=dict(showgrid=False, tickfont=dict(color="#e2e8f0", size=11)),
